@@ -191,12 +191,15 @@ table.tbl{border-collapse:collapse;width:100%;font-size:13px}
   .bottom{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:calc(68px + env(safe-area-inset-left,0px));z-index:50;background:var(--surface);border-right:1px solid var(--line);padding:calc(12px + env(safe-area-inset-top,0px)) 0 calc(12px + env(safe-area-inset-bottom,0px)) env(safe-area-inset-left,0px);justify-content:flex-start;align-items:center;gap:4px}
   .bottom .rail-brand{width:36px;height:36px;border-radius:10px;background:var(--surface2);color:var(--muted);border:1px solid var(--line);display:grid;place-items:center;margin-bottom:10px;padding:0}
   .rail-tg{display:grid!important;flex:none}
-  .bottom{transition:transform .2s ease}
+  .bottom{transition:transform .2s ease;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+  .bottom::-webkit-scrollbar{display:none}
+  .bottom>*{flex:none}
+  .bottom button span{line-height:1.15;text-align:center}
   .main{transition:margin-left .2s ease}
   .app.rail-off .bottom{transform:translateX(-100%)}
   .app.rail-off .main{margin-left:0}
   .app:not(.rail-off) .rail-tg{display:none!important}
-  .bottom button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;letter-spacing:-.01em;color:var(--muted);padding:8px 2px;width:64px;border-radius:10px}
+  .bottom button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;letter-spacing:-.01em;color:var(--muted);padding:6px 2px;width:64px;border-radius:10px;flex:none}
   .bottom button[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
   .bottom .fab{width:48px;height:48px;border-radius:14px;background:var(--accent);color:var(--accent-ink);justify-content:center;padding:0;margin:6px 0;box-shadow:0 6px 16px rgba(11,107,102,.35)}
   .frow{grid-template-columns:1fr}
@@ -700,8 +703,7 @@ function renderShell(){
      <button class="icon-btn" data-act="lock" aria-label="Bloquear">${ic("lock")}</button></div></header>
      <main class="content" id="view"></main></div>
    <nav class="bottom" aria-label="Seções">
-     <button class="rail-brand" data-act="rail" aria-label="Esconder menu">${ic("left")}</button><button class="fab" data-act="newTx" aria-label="Novo lançamento">${ic("plus")}</button><button data-act="nav" data-v="home">${ic("home")}Início</button><button data-act="nav" data-v="tx">${ic("list")}Lançamentos</button>
-     <button data-act="nav" data-v="cards">${ic("card")}Cartões</button><button data-act="menu">${ic("menu")}Mais</button></nav></div>`;
+     <button class="rail-brand" data-act="rail" aria-label="Esconder menu">${ic("left")}</button><button class="fab" data-act="newTx" aria-label="Novo lançamento">${ic("plus")}</button>${NAV.map(([k,l,i])=>`<button data-act="nav" data-v="${k}">${ic(i)}<span>${({home:"Início",fixed:"Contas fixas"})[k]||l}</span></button>`).join("")}</nav></div>`;
   applyRail();
 }
 function applyRail(){try{if(localStorage.getItem("cf-rail-off")==="1")$(".app")?.classList.add("rail-off")}catch{}}
@@ -739,7 +741,7 @@ function lineSVG(points,W){
   let g="";for(let v=0;v<=top+1;v+=step)g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end">${S.hidden?"•":short(v)}</text>`;
   const pts=points.map((p,i)=>x(i)+","+y(p.v)).join(" ");
   g+=`<polygon points="${x(0)},${H-B} ${pts} ${x(points.length-1)},${H-B}" fill="var(--accent)" opacity=".12"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
-  points.forEach((p,i)=>{g+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${p.label}</text>`});
+  {const gap=points.length>1?(x(1)-x(0)):99,ev=gap<30?Math.ceil(30/gap):1;points.forEach((p,i)=>{if((points.length-1-i)%ev===0)g+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${p.label}</text>`})}
   const li=points.length-1;g+=`<circle cx="${x(li)}" cy="${y(points[li].v)}" r="4" fill="var(--accent)"/>`;
   return`<svg class="chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolução">${g}</svg>`;
 }
