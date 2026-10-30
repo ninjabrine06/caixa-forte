@@ -176,18 +176,22 @@ table.tbl{border-collapse:collapse;width:100%;font-size:13px}
   .app{grid-template-columns:1fr}
   .side{display:none}
   .top-in{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-  .content{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px calc(96px + env(safe-area-inset-bottom,0px));gap:16px}
+  .main{margin-left:calc(68px + env(safe-area-inset-left,0px))}
+  .top-in{padding-left:12px!important}
+  .content{padding-left:12px;padding-right:max(12px,env(safe-area-inset-right,0px));padding-block:16px calc(72px + env(safe-area-inset-bottom,0px));gap:16px}
   .period .pl{min-width:0;font-size:13px}
   .status .txt{display:none}
   .g2,.g3,.g-main{grid-template-columns:1fr}
   .kpis{grid-template-columns:1fr 1fr}
   .kpi:nth-child(3){border-left:0}
   .kpi:nth-child(n+3){border-top:1px solid var(--line)}
-  .kpi .v{font-size:18px}
-  .bottom{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--surface);border-top:1px solid var(--line);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));justify-content:space-around;align-items:center}
-  .bottom button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:var(--muted);padding:4px 8px;min-width:56px}
-  .bottom button[aria-current="page"]{color:var(--accent)}
-  .bottom .fab{width:48px;height:48px;border-radius:14px;background:var(--accent);color:var(--accent-ink);justify-content:center;min-width:0;padding:0;margin-top:-18px;box-shadow:0 6px 16px rgba(11,107,102,.35)}
+  .kpi{padding:12px 10px}
+  .kpi .v{font-size:clamp(13px,4.2vw,17px);letter-spacing:-.03em;white-space:normal;overflow:visible;overflow-wrap:anywhere}
+  .bottom{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:calc(68px + env(safe-area-inset-left,0px));z-index:50;background:var(--surface);border-right:1px solid var(--line);padding:calc(12px + env(safe-area-inset-top,0px)) 0 calc(12px + env(safe-area-inset-bottom,0px)) env(safe-area-inset-left,0px);justify-content:flex-start;align-items:center;gap:4px}
+  .bottom .rail-brand{width:36px;height:36px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;margin-bottom:10px}
+  .bottom button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;letter-spacing:-.01em;color:var(--muted);padding:8px 2px;width:64px;border-radius:10px}
+  .bottom button[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
+  .bottom .fab{width:48px;height:48px;border-radius:14px;background:var(--accent);color:var(--accent-ink);justify-content:center;padding:0;margin:6px 0;box-shadow:0 6px 16px rgba(11,107,102,.35)}
   .frow{grid-template-columns:1fr}
   .ov{align-items:flex-end;padding:0}
   .modal{width:100%;border-radius:16px 16px 0 0;max-height:92%;padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -688,8 +692,7 @@ function renderShell(){
      <button class="icon-btn" data-act="lock" aria-label="Bloquear">${ic("lock")}</button></div></header>
      <main class="content" id="view"></main></div>
    <nav class="bottom" aria-label="Seções">
-     <button data-act="nav" data-v="home">${ic("home")}Início</button><button data-act="nav" data-v="tx">${ic("list")}Lançamentos</button>
-     <button class="fab" data-act="newTx" aria-label="Novo lançamento">${ic("plus")}</button>
+     <div class="rail-brand" aria-hidden="true">${ic("lock")}</div><button class="fab" data-act="newTx" aria-label="Novo lançamento">${ic("plus")}</button><button data-act="nav" data-v="home">${ic("home")}Início</button><button data-act="nav" data-v="tx">${ic("list")}Lançamentos</button>
      <button data-act="nav" data-v="cards">${ic("card")}Cartões</button><button data-act="menu">${ic("menu")}Mais</button></nav></div>`;
 }
 function renderTop(){
@@ -716,7 +719,7 @@ function barSVG(series,W){
   series.forEach((s,i)=>{const cx=L+gw*i+gw/2;
     g+=`<rect x="${cx-bw-1}" y="${y(s.a)}" width="${bw}" height="${Math.max(0,H-B-y(s.a))}" rx="2" fill="var(--pos)" opacity="${s.cur?1:.75}"><title>Receitas ${s.label}: ${money(s.a)}</title></rect>`;
     g+=`<rect x="${cx+1}" y="${y(s.b)}" width="${bw}" height="${Math.max(0,H-B-y(s.b))}" rx="2" fill="var(--neg)" opacity="${s.cur?1:.75}"><title>Despesas ${s.label}: ${money(s.b)}</title></rect>`;
-    g+=`<text x="${cx}" y="${H-8}" text-anchor="middle" ${s.cur?'style="fill:var(--ink);font-weight:600"':""}>${s.label}</text>`});
+    const every=gw<30?Math.ceil(30/gw):1;if(s.cur||(n-1-i)%every===0)g+=`<text x="${cx}" y="${H-8}" text-anchor="middle" ${s.cur?'style="fill:var(--ink);font-weight:600"':""}>${s.label}</text>`});
   return`<svg class="chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Receitas e despesas por mês">${g}</svg>`;
 }
 function lineChart(points){return chartPH(W=>lineSVG(points,W))}
