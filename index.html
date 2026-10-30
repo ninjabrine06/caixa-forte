@@ -60,6 +60,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .top-sp{flex:1}
 .status{font-size:12px;color:var(--faint);display:flex;align-items:center;gap:6px;white-space:nowrap}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--pos)} .dot.w{background:var(--warn)} .dot.e{background:var(--neg)}
+.rail-tg{display:none!important}
 .icon-btn{border:1px solid var(--line);background:var(--surface);border-radius:9px;width:36px;height:36px;display:grid;place-items:center;color:var(--muted)}
 .icon-btn:hover{color:var(--ink)}
 .content{padding-block:24px 40px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px));max-width:1280px;width:100%;display:flex;flex-direction:column;gap:20px}
@@ -188,7 +189,13 @@ table.tbl{border-collapse:collapse;width:100%;font-size:13px}
   .kpi{padding:12px 10px}
   .kpi .v{font-size:clamp(13px,4.2vw,17px);letter-spacing:-.03em;white-space:normal;overflow:visible;overflow-wrap:anywhere}
   .bottom{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:calc(68px + env(safe-area-inset-left,0px));z-index:50;background:var(--surface);border-right:1px solid var(--line);padding:calc(12px + env(safe-area-inset-top,0px)) 0 calc(12px + env(safe-area-inset-bottom,0px)) env(safe-area-inset-left,0px);justify-content:flex-start;align-items:center;gap:4px}
-  .bottom .rail-brand{width:36px;height:36px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;margin-bottom:10px}
+  .bottom .rail-brand{width:36px;height:36px;border-radius:10px;background:var(--surface2);color:var(--muted);border:1px solid var(--line);display:grid;place-items:center;margin-bottom:10px;padding:0}
+  .rail-tg{display:grid!important;flex:none}
+  .bottom{transition:transform .2s ease}
+  .main{transition:margin-left .2s ease}
+  .app.rail-off .bottom{transform:translateX(-100%)}
+  .app.rail-off .main{margin-left:0}
+  .app:not(.rail-off) .rail-tg{display:none!important}
   .bottom button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;letter-spacing:-.01em;color:var(--muted);padding:8px 2px;width:64px;border-radius:10px}
   .bottom button[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
   .bottom .fab{width:48px;height:48px;border-radius:14px;background:var(--accent);color:var(--accent-ink);justify-content:center;padding:0;margin:6px 0;box-shadow:0 6px 16px rgba(11,107,102,.35)}
@@ -687,14 +694,17 @@ function renderShell(){
      <nav aria-label="Seções">${NAV.map(([k,l,i])=>`<button class="nav-btn" data-act="nav" data-v="${k}">${ic(i)}${l}</button>`).join("")}</nav>
      <div class="side-foot"><button class="btn pri" data-act="newTx" style="justify-content:center">${ic("plus")}Novo lançamento</button><button class="btn ghost" data-act="lock" style="justify-content:center">${ic("lock")}Bloquear</button></div></aside>
    <div class="main"><header class="top"><div class="top-in">
+     <button class="icon-btn rail-tg" data-act="rail" aria-label="Mostrar menu">${ic("menu")}</button>
      <div class="period" id="period"></div><span class="top-sp"></span>${saveHTML()}
      <button class="icon-btn" data-act="eye" id="eyebtn" aria-label="Ocultar valores"></button>
      <button class="icon-btn" data-act="lock" aria-label="Bloquear">${ic("lock")}</button></div></header>
      <main class="content" id="view"></main></div>
    <nav class="bottom" aria-label="Seções">
-     <div class="rail-brand" aria-hidden="true">${ic("lock")}</div><button class="fab" data-act="newTx" aria-label="Novo lançamento">${ic("plus")}</button><button data-act="nav" data-v="home">${ic("home")}Início</button><button data-act="nav" data-v="tx">${ic("list")}Lançamentos</button>
+     <button class="rail-brand" data-act="rail" aria-label="Esconder menu">${ic("left")}</button><button class="fab" data-act="newTx" aria-label="Novo lançamento">${ic("plus")}</button><button data-act="nav" data-v="home">${ic("home")}Início</button><button data-act="nav" data-v="tx">${ic("list")}Lançamentos</button>
      <button data-act="nav" data-v="cards">${ic("card")}Cartões</button><button data-act="menu">${ic("menu")}Mais</button></nav></div>`;
+  applyRail();
 }
+function applyRail(){try{if(localStorage.getItem("cf-rail-off")==="1")$(".app")?.classList.add("rail-off")}catch{}}
 function renderTop(){
   const p=S.period;let label;
   if(p.mode==="custom"&&p.from&&p.to)label=fmtDate(p.from)+" – "+fmtDate(p.to);else label=MESES[p.m-1]+" "+p.y;
@@ -1314,6 +1324,7 @@ function wipe(){
 const ACT={
  nav:a=>{closeModal();S.view=a.dataset.v;render()},
  menu:()=>menuSheet(),
+ rail:()=>{const a=$(".app");if(!a)return;const off=!a.classList.contains("rail-off");a.classList.toggle("rail-off",off);try{localStorage.setItem("cf-rail-off",off?"1":"")}catch{}},
  newTx:()=>{closeModal();txForm()},
  newRec:()=>recForm(),editRec:a=>{const r=S.data.recur.find(x=>x.id===a.dataset.id);if(r)recForm(r)},
  payRec:a=>{const t=S.data.tx.find(x=>x.id===a.dataset.id);if(t)payRecForm(t)},
