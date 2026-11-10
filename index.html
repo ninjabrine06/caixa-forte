@@ -383,7 +383,7 @@ async function writeSealed(sealed){if(S.drv)return drvWrite(sealed);if(S.gas)ret
   S.chunks=parts.length;S.lastSealed=sealed;
 }
 /* ---------- Modo comercial: cofre no Google Drive de cada cliente (pasta oculta do app) ---------- */
-const DRV_SCOPE="https://www.googleapis.com/auth/drive.appdata";
+const DRV_APPDATA="https://www.googleapis.com/auth/drive.appdata",DRV_FILESCOPE="https://www.googleapis.com/auth/drive.file",DRV_SCOPE=DRV_APPDATA+" "+DRV_FILESCOPE;
 const DRV_FILE="cofre.json",DRV_KEEP=30,DRV_HINT="caixa-forte-google";
 const DAPI="https://www.googleapis.com/drive/v3",DUP="https://www.googleapis.com/upload/drive/v3/files";
 let gTok=null,gExp=0,gClient=null,gWait=null;
@@ -394,7 +394,7 @@ function gInit(){if(gClient)return;
   gClient=google.accounts.oauth2.initTokenClient({client_id:CF_GOOGLE_CLIENT_ID,scope:DRV_SCOPE,
     callback:r=>{const w=gWait;gWait=null;if(!w)return;
       if(!r||!r.access_token){w.rej(new Error("Não foi possível entrar com o Google. Tente de novo."));return}
-      if(google.accounts.oauth2.hasGrantedAllScopes&&!google.accounts.oauth2.hasGrantedAllScopes(r,DRV_SCOPE)){w.rej(new Error("Para funcionar, marque a permissão do Google Drive na tela do Google. O app só acessa os arquivos que ele mesmo cria."));return}
+      if(google.accounts.oauth2.hasGrantedAllScopes&&!google.accounts.oauth2.hasGrantedAllScopes(r,DRV_APPDATA)){w.rej(new Error("Para funcionar, marque a permissão do Google Drive na tela do Google. O app só acessa os arquivos que ele mesmo cria."));return}
       gTok=r.access_token;gExp=Date.now()+(+r.expires_in||3600)*1000;w.res(true)},
     error_callback:e=>{const w=gWait;gWait=null;if(!w)return;
       w.rej(new Error(e&&e.type==="popup_closed"?"Login cancelado.":e&&e.type==="popup_failed_to_open"?"O navegador bloqueou a janela do Google. Libere pop-ups para este site e tente de novo.":"Não foi possível entrar com o Google. Tente de novo."))}})}
@@ -439,6 +439,19 @@ function reauthBox(){if(reauthOpen)return;reauthOpen=true;
   openModal({title:"Reconectar ao Google",body:`<p style="margin:0">Por segurança, o Google pede para confirmar a sua conta de tempos em tempos. As alterações continuam guardadas neste aparelho e são salvas no Drive assim que você reconectar.</p>`,submit:"Reconectar",
     onSubmit:async()=>{try{await gLogin("")}catch(x){return x.message}reauthOpen=false;saveNow();return true},
     onMount:f=>{$$("[data-close]",f.parentNode).forEach(b=>b.addEventListener("click",()=>{reauthOpen=false}))}})}
+async function drvSaveVisible(){if(!S.drv)return;
+  try{await saveNow();const sealed=await seal(S.data,S.key);
+    const json=JSON.stringify({format:"caixa-forte-backup",v:2,wraps:S.wraps,...sealed,exportedAt:new Date().toISOString()});
+    let fid=S.drvFolder;
+    if(!fid){const q=encodeURIComponent("name='Caixa Forte - Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+      const j=await(await drv(DAPI+"/files?spaces=drive&fields=files(id)&q="+q)).json();fid=j.files&&j.files[0]&&j.files[0].id;
+      if(!fid){const r=await drv(DAPI+"/files?fields=id",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:"Caixa Forte - Backups",mimeType:"application/vnd.google-apps.folder"})});fid=(await r.json()).id}
+      S.drvFolder=fid}
+    const name="caixa-forte-backup-"+todayISO()+"-"+new Date().toTimeString().slice(0,5).replace(":","h")+".json";
+    const m=multipart({name,parents:[fid],mimeType:"application/json"},json);
+    await drv(DUP+"?uploadType=multipart&fields=id",{method:"POST",headers:m.headers,body:m.body});
+    S.data.settings.lastBackup=todayISO();markDirty();rerender();toast("Backup salvo no seu Drive, pasta \u201cCaixa Forte - Backups\u201d")}
+  catch(x){if(x.code==="reauth"){toast("O Google precisa da permiss\u00e3o para criar a pasta de backups. Reconecte e marque todas as permiss\u00f5es; depois toque em Salvar de novo.");reauthBox();return}toast(x.message)}}
 async function drvStart(){await drvAbout();const f=await drvFind();renderGate(f?"unlock":"create",f?"Digite sua senha mestra para abrir o cofre.":"")}
 function gSwitch(){try{if(gTok&&google.accounts.oauth2.revoke)google.accounts.oauth2.revoke(gTok,()=>{})}catch{}
   gTok=null;gExp=0;S.gUser=null;try{localStorage.removeItem(DRV_HINT)}catch{}
@@ -1044,7 +1057,7 @@ VIEWS.settings=()=>{
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="hideopen" ${S.data.settings.hideOnOpen?"checked":""}> Abrir com os valores ocultos</label>
     <div class="row" style="padding:0"><div class="grow"><div class="t">Código de recuperação</div><div class="m" style="white-space:normal">${S.wraps&&S.wraps.rc?"Ativo. Gere um novo se achar que o atual foi exposto.":"Não configurado. Crie agora para não perder o acesso se esquecer a senha."}</div></div><button class="btn sm" data-act="regenRc">${S.wraps&&S.wraps.rc?"Gerar novo":"Criar código"}</button></div>
     ${S.gas?`<div class="row" style="padding:0"><div class="grow"><div class="t">App autenticador</div><div class="m" style="white-space:normal">${S.totpOn?"Ativo. Se esquecer a senha, um código do Google Authenticator libera o acesso.":"Use o Google Authenticator para recuperar o acesso se esquecer a senha."}</div></div><div class="toolbar">${S.totpOn?`<button class="btn sm" data-act="totpOff">Desativar</button>`:""}<button class="btn sm" data-act="totpSetup">${S.totpOn?"Reconfigurar":"Configurar"}</button></div></div>${S.totpOn?`<div class="row" style="padding:0"><div class="grow"><div class="t">Aparelhos confiáveis</div><div class="m" style="white-space:normal">Aparelhos novos pedem senha e código do autenticador. Use se perder um celular ou computador.</div></div><button class="btn sm" data-act="forgetDev">Esquecer todos</button></div>`:""}`:""}
-    ${S.drv?`<div class="row" style="padding:0"><div class="grow"><div class="t">Cópias automáticas</div><div class="m" style="white-space:normal">Uma por dia no seu Drive, últimos 30 dias</div></div><button class="btn sm" data-act="drvBackups">Restaurar</button></div><div class="row" style="padding:0"><div class="grow"><div class="t">Conta Google</div><div class="m" style="white-space:normal">${esc(S.gUser||"Conectada")}</div></div><button class="btn sm" data-act="gSwitch">Sair</button></div>`:""}
+    ${S.drv?`<div class="row" style="padding:0"><div class="grow"><div class="t">Backup no meu Drive</div><div class="m" style="white-space:normal">Salva uma cópia criptografada na pasta “Caixa Forte - Backups”, que você vê no Drive</div></div><button class="btn sm" data-act="drvSaveVisible">Salvar agora</button></div><div class="row" style="padding:0"><div class="grow"><div class="t">Cópias automáticas</div><div class="m" style="white-space:normal">Uma por dia no seu Drive, últimos 30 dias</div></div><button class="btn sm" data-act="drvBackups">Restaurar</button></div><div class="row" style="padding:0"><div class="grow"><div class="t">Conta Google</div><div class="m" style="white-space:normal">${esc(S.gUser||"Conectada")}</div></div><button class="btn sm" data-act="gSwitch">Sair</button></div>`:""}
     <div class="toolbar"><button class="btn" data-act="changePw">Trocar senha mestra</button><button class="btn" data-act="lock">${ic("lock")}Bloquear agora</button></div></div></section>
    <section class="panel"><div class="panel-h"><h2>Dados</h2></div><div class="panel-b" style="display:flex;flex-direction:column;gap:12px">
     <div class="row"><div class="grow"><div class="t">Importar planilha</div><div class="m">Lê .xlsx/.xlsm no seu aparelho, sem enviar o arquivo</div></div><button class="btn sm" data-act="import">Importar</button></div>
@@ -1350,7 +1363,7 @@ const ACT={
  totpSetup:()=>totpSetup(false),
  forgetDev:async()=>{if(await confirmBox("Todos os aparelhos (inclusive este) vão pedir o código do Google Authenticator no próximo acesso.","Esquecer aparelhos")){try{await gasRun("forgetDevices");try{localStorage.removeItem(DEVK)}catch{}toast("Aparelhos esquecidos")}catch(x){toast(x.message)}}},
  totpOff:async()=>{if(await confirmBox("Desativar a recuperação pelo app autenticador?","Desativar")){try{await gasRun("disableTotp");S.totpOn=false;rerender();toast("Autenticador desativado")}catch(x){toast(x.message)}}},
- drvBackups:()=>drvBackups(),gSwitch:async()=>{if(await confirmBox("Sair da conta Google neste aparelho? Seus dados continuam salvos no seu Drive.","Sair",false)){if(S.dirty)await saveNow();gSwitch()}},
+ drvBackups:()=>drvBackups(),drvSaveVisible:()=>drvSaveVisible(),gSwitch:async()=>{if(await confirmBox("Sair da conta Google neste aparelho? Seus dados continuam salvos no seu Drive.","Sair",false)){if(S.dirty)await saveNow();gSwitch()}},
  import:()=>importSheet(),exportCsv:()=>exportCsv(),backup:()=>exportBackup(),restore:()=>restoreBackup(),wipe:()=>wipe(),changePw:()=>changePwForm()
 };
 function shift(n){const p=S.period;if(p.mode==="custom"){S.period={mode:"month",y:+p.to.slice(0,4),m:+p.to.slice(5,7)}}else{const k=addMonths(mkey(p.y,p.m),n);S.period={mode:"month",y:+k.slice(0,4),m:+k.slice(5,7)}}S.repYear=S.period.y;render()}
